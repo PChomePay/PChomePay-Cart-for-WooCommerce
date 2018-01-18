@@ -91,14 +91,5 @@ return array(
         'type' => 'text',
         'description' => __("請輸入 ATM 虛擬帳號繳費期限 (1~5 天)，預設 5 天。", 'woocommerce'),
         'default' => 5
-    ),
-    'cover_transfee' => array(
-        'title' => __('退款的跨行轉帳手續費，<br>值須為 Y 或 N。', 'woocommerce'),
-        'type' => 'select',
-        'description' => __("Y : 由串接廠商自行吸收跨行轉帳手續費。<br>N : 由使用者自行負擔跨行轉帳手續費。", 'woocommerce'),
-        'options' => array(
-            'Y' => __('Y', 'woocommerce'),
-            'N' => __('N', 'woocommerce')
-        )
     )
 );

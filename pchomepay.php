@@ -5,7 +5,7 @@
  * Plugin Name: PChomePay Gateway for WooCommerce
  * Plugin URI: https://www.pchomepay.com.tw
  * Description: 讓 WooCommerce 可以使用 PChomePay支付連 進行結帳！水啦！！
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: PChomePay支付連
  * Author URI: https://www.pchomepay.com.tw
  */
@@ -62,7 +62,6 @@ function pchomepay_gateway_init()
             $this->notify_url = WC()->api_request_url(get_class($this));
             $this->payment_methods = $this->get_option('payment_methods');
             $this->card_installment = $this->get_option('card_installment');
-            $this->cover_transfee = $this->get_option('cover_transfee');
 
             self::$log_enabled = $this->debug;
 
@@ -251,13 +250,15 @@ function pchomepay_gateway_init()
             } elseif ($notify_type == 'order_confirm') {
                 $order->add_order_note($pay_type_note, true);
                 $order->payment_complete();
+            } elseif($notify_type == 'order_audit') {
+                $order->add_order_note(sprintf(__('訂單交易等待中。<br>status code: %1$s<br>message: %2$s', 'woocommerce'), $order_data->status_code, OrderStatusCodeEnum::getErrMsg($order_data->status_code)), true);
             }
 
             echo 'success';
             exit();
         }
 
-        private function get_pchomepay_refund_data($orderID, $amount, $refundID = null, $return_url = null)
+        private function get_pchomepay_refund_data($orderID, $amount, $refundID = null)
         {
             try {
                 global $woocommerce;
@@ -277,13 +278,10 @@ function pchomepay_gateway_init()
                 }
 
                 $trade_amount = (int)$amount;
-                (in_array($order->pay_type, ['ATM', 'EACH'])) ? $cover_transfee = $this->cover_transfee : $cover_transfee = null;
                 $pchomepay_args = [
                     'order_id' => $order_id,
                     'refund_id' => $refund_id,
                     'trade_amount' => $trade_amount,
-                    'cover_transfee' => $cover_transfee,
-                    'return_url' => $return_url,
                 ];
 
                 $pchomepay_args = apply_filters('woocommerce_pchomepay_args', $pchomepay_args);
@@ -308,9 +306,8 @@ function pchomepay_gateway_init()
                 }
 
                 $wcOrder = new WC_Order(substr($order_id, 8));
-                $return_url = $this->get_return_url($wcOrder);
 
-                $pchomepay_args = json_encode($this->get_pchomepay_refund_data($orderID, $amount, $refundID, $return_url));
+                $pchomepay_args = json_encode($this->get_pchomepay_refund_data($orderID, $amount, $refundID));
 
                 if (!class_exists('PChomePayClient')) {
                     if (!require(dirname(__FILE__) . '/includes/PChomePayClient.php')) {
@@ -393,10 +390,10 @@ function pchomepay_plugin_updater_init()
         $config = array(
             'slug' => plugin_basename(__FILE__),
             'proper_folder_name' => 'PCHomePay-for-WooCommerce-master',
-            'api_url' => 'https://api.github.com/repos/JerryR7/PChomePay-for-WooCommerce',
-            'raw_url' => 'https://raw.github.com/JerryR7/PChomePay-for-WooCommerce/master',
-            'github_url' => 'https://github.com/JerryR7/PChomePay-for-WooCommerce',
-            'zip_url' => 'https://github.com/JerryR7/PChomePay-for-WooCommerce/archive/master.zip',
+            'api_url' => 'https://api.github.com/repos/PChomePay/PChomePay-for-WooCommerce',
+            'raw_url' => 'https://raw.github.com/PChomePay/PChomePay-for-WooCommerce/master',
+            'github_url' => 'https://github.com/PChomePay/PChomePay-for-WooCommerce',
+            'zip_url' => 'https://github.com/PChomePay/PChomePay-for-WooCommerce/archive/master.zip',
             'sslverify' => true,
             'requires' => '3.0',
             'tested' => '4.8',
