@@ -91,5 +91,19 @@ return array(
         'type' => 'text',
         'description' => __("請輸入 ATM 虛擬帳號繳費期限 (1~5 天)，預設 5 天。", 'woocommerce'),
         'default' => 5
+    ),
+    'card_last_number' => array(
+        'title' => __('記錄信用卡末四碼', 'woocommerce'),
+        'label' => __('Enable', 'woocommerce'),
+        'type' => 'checkbox',
+        'description' => __('紀錄買家信用卡末四碼資訊於訂單備註', 'woocommerce'),
+        'default' => 'yes'
     )
+//,
+//    'customize_order_received_text' => array(
+//        'title' => __('訂單成立後顯示訊息', 'woocommerce'),
+//        'type' => 'textarea',
+//        'description' => __('訂單成立顯示訊息', 'woocommerce'),
+//        'default' => __('', 'woocommerce')
+//    )
 );

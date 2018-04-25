@@ -1,7 +1,4 @@
 <?php
-
-if (!defined('ABSPATH')) exit;
-
 /**
  * Created by PhpStorm.
  * User: Jerry
@@ -9,13 +6,17 @@ if (!defined('ABSPATH')) exit;
  * Time: 上午10:36
  */
 
+if (!defined('ABSPATH')) exit;
+
 include_once('ApiException.php');
 include_once('OrderStatusCodeEnum.php');
+include_once('FileTokenStorage.php');
 
 class PChomePayClient
 {
     const BASE_URL = "https://api.pchomepay.com.tw/v1";
     const SB_BASE_URL = "https://sandbox-api.pchomepay.com.tw/v1";
+    const TOKEN_EXPIRE_SEC = 1800;
 
     public function __construct($appID, $secret, $sandboxSecret, $sandBox = false, $debug = false)
     {
@@ -30,8 +31,10 @@ class PChomePayClient
         $this->getPaymentURL = $baseURL . "/payment/{order_id}";
         $this->getRefundURL = $baseURL . "/refund/{refund_id}";
         $this->postRefundURL = $baseURL . "/refund";
+        $this->postPaymentAuditURL = $baseURL . "/payment/audit";
 
         $this->userAuth = "{$this->appID}:{$this->secret}";
+        $this->tokenStorage = new FileTokenStorage(null, $sandBox);
     }
 
     // 紀錄log
@@ -62,6 +65,12 @@ class PChomePayClient
         return $this->get_request(str_replace("{order_id}", $orderID, $this->getPaymentURL));
     }
 
+    // 訂單審單
+    public function postPaymentAudit($data)
+    {
+        return $this->post_request($this->postPaymentAuditURL, $data);
+    }
+
     // 取Token
     protected function getToken()
     {
@@ -79,9 +88,43 @@ class PChomePayClient
         return $this->handleResult($body);
     }
 
+    protected function validateTokenExpiredIn()
+    {
+        $tokenFail = false;
+
+        if (!empty($this->tokenStorage->getTokenStr())) {
+            try {
+                $tokenObj = json_decode($this->tokenStorage->getTokenStr());
+                if ($this->willExpiredIn($tokenObj)) {
+                    $tokenFail = true;
+                }
+            } catch (Exception $ex) {
+                $tokenFail = true;
+            }
+        } else {
+            $tokenFail = true;
+        }
+
+        //如果沒有資料 或 token 快過期時 , 取得新的 token
+        if ($tokenFail) {
+            $tokenObj = $this->getToken();
+            $this->tokenStorage->saveTokenStr(json_encode($tokenObj));
+        } else {
+            $tokenObj = json_decode($this->tokenStorage->getTokenStr());
+        }
+
+        return $tokenObj;
+
+    }
+
+    private function willExpiredIn($tokenObj)
+    {
+        return (time() + PChomePayClient::TOKEN_EXPIRE_SEC) > $tokenObj->expired_timestamp;
+    }
+
     protected function post_request($method, $postdata)
     {
-        $token = $this->getToken();
+        $token = $this->validateTokenExpiredIn();
 
         $r = wp_remote_post($method, array(
             'headers' => array(
@@ -98,7 +141,7 @@ class PChomePayClient
 
     protected function get_request($method)
     {
-        $token = $this->getToken();
+        $token = $this->validateTokenExpiredIn();
 
         $r = wp_remote_get($method, array(
             'headers' => array(
@@ -141,7 +184,7 @@ class PChomePayClient
 
         if (isset($obj->error_type)) {
             $this->log("\n錯誤類型：" . $obj->error_type . "\n錯誤代碼：" . $obj->code . "\n錯誤訊息：" . ApiException::getErrMsg($obj->code));
-            throw new Exception("交易失敗，請聯絡網站管理員。錯誤代碼：" . $obj->code);
+            throw new Exception("交易失敗，請聯絡網站管理員。錯誤代碼：" . $obj->code, $obj->code);
         }
 
         if (empty($obj->token) && empty($obj->order_id)) {
