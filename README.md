@@ -1,6 +1,6 @@
 # PChomePay-for-WooCommerce
 
-~Current Version:1.1.0~
+~Current Version:1.3.9~
 
 This plugin can quickly add [PChomePay](https://www.pchomepay.com.tw/) payment to your WooCommerce site!
 
@@ -10,6 +10,7 @@ Currently supports the following features:
 
 * Requesting payments
 * Refunds
+* Order audit
 
 This plugin supports refunds directly from the WooCommerce Order backend.\
 When you processing a refund within its payment method is ATM, remember to give the refund URL to your purchaser.\

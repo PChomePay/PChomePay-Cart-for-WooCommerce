@@ -99,11 +99,11 @@ return array(
         'description' => __('紀錄買家信用卡末四碼資訊於訂單備註', 'woocommerce'),
         'default' => 'yes'
     )
-//,
-//    'customize_order_received_text' => array(
-//        'title' => __('訂單成立後顯示訊息', 'woocommerce'),
-//        'type' => 'textarea',
-//        'description' => __('訂單成立顯示訊息', 'woocommerce'),
-//        'default' => __('', 'woocommerce')
-//    )
+,
+    'customize_order_received_text' => array(
+        'title' => __('訂單成立後顯示訊息', 'woocommerce'),
+        'type' => 'textarea',
+        'description' => __('訂單成立顯示訊息', 'woocommerce'),
+        'default' => __('', 'woocommerce')
+    )
 );

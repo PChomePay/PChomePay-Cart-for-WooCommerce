@@ -15,7 +15,7 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
 
     /** @var WC_Logger Logger instance */
     public static $log = false;
-//    public static $customize_order_received_text;
+    public static $customize_order_received_text;
 
     public function __construct()
     {
@@ -50,7 +50,7 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
         $this->card_installment = $this->get_option('card_installment');
         $this->card_last_number = ($this->get_option('card_last_number') === 'yes') ? true : false;
 
-//        self::$customize_order_received_text = $this->get_option('customize_order_received_text');
+        self::$customize_order_received_text = $this->get_option('customize_order_received_text');
         self::$log_enabled = $this->debug;
 
         if (empty($this->app_id) || empty($this->secret)) {
@@ -230,7 +230,7 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
                 $pay_type_note = '銀行支付 付款';
                 break;
             default:
-                $pay_type_note = $order_data->pay_type . '付款';
+                $pay_type_note = '未選擇付款方式';
         }
 
         if ($notify_type == 'order_audit') {
