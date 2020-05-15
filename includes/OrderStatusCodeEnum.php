@@ -6,7 +6,7 @@
  * Time: 下午4:15
  */
 
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
 
 class OrderStatusCodeEnum
 {

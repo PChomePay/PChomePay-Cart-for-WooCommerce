@@ -6,7 +6,7 @@
  * Time: 上午10:36
  */
 
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
 
 include_once('ApiException.php');
 include_once('OrderStatusCodeEnum.php');
@@ -14,9 +14,22 @@ include_once('FileTokenStorage.php');
 
 class PChomePayClient
 {
-    const BASE_URL = "https://api.pchomepay.com.tw/v1";
-    const SB_BASE_URL = "https://sandbox-api.pchomepay.com.tw/v1";
+    const BASE_URL = "https://api.pchomepay.com.tw";
+    const SB_BASE_URL = "https://sandbox-api.pchomepay.com.tw";
     const TOKEN_EXPIRE_SEC = 1800;
+
+    private $debug;
+    private $appID;
+    private $secret;
+    private $tokenURL;
+    private $postPaymentURL;
+    private $getPaymentURL;
+    private $getRefundURL;
+    private $postRefundURL;
+    private $postV2RefundURL;
+    private $postPaymentAuditURL;
+    private $get711HistoryPageURL;
+    private $tokenStorage;
 
     public function __construct($appID, $secret, $sandboxSecret, $sandBox = false, $debug = false)
     {
@@ -25,22 +38,29 @@ class PChomePayClient
         $this->debug = $debug;
         $this->appID = $appID;
         $this->secret = $sandBox ? $sandboxSecret : $secret;
+        $this->tokenURL = $baseURL . "/v1/token";
+        $this->postPaymentURL = $baseURL . "/v1/payment";
+        $this->getPaymentURL = $baseURL . "/v1/payment/{order_id}";
+        $this->getRefundURL = $baseURL . "/v1/refund/{refund_id}";
+        $this->postRefundURL = $baseURL . "/v1/refund";
+        $this->postV2RefundURL = $baseURL . "/v2/refund";
+        $this->postPaymentAuditURL = $baseURL . "/v1/payment/audit";
+        $this->get711HistoryPageURL = $baseURL . "/v1/logistic/query/{order_id}/history-page";
 
-        $this->tokenURL = $baseURL . "/token";
-        $this->postPaymentURL = $baseURL . "/payment";
-        $this->getPaymentURL = $baseURL . "/payment/{order_id}";
-        $this->getRefundURL = $baseURL . "/refund/{refund_id}";
-        $this->postRefundURL = $baseURL . "/refund";
-        $this->postPaymentAuditURL = $baseURL . "/payment/audit";
-
-        $this->userAuth = "{$this->appID}:{$this->secret}";
         $this->tokenStorage = new FileTokenStorage(null, $sandBox);
     }
 
     // 紀錄log
     private function log($message)
     {
-        if ($this->debug) WC_Gateway_PCHomePay::log($message);
+        if ($this->debug) {
+            WC_Gateway_PCHomePay::log($message);
+        }
+    }
+
+    private function getRefundUrl($version)
+    {
+        return $version === 'v1' ? $this->postRefundURL : $this->postV2RefundURL;
     }
 
     // 建立訂單
@@ -50,9 +70,9 @@ class PChomePayClient
     }
 
     // 建立退款
-    public function postRefund($data)
+    public function postRefund($data, $version = 'v2')
     {
-        return $this->post_request($this->postRefundURL, $data);
+        return $this->post_request($this->getRefundUrl($version), $data);
     }
 
     // 查詢訂單
@@ -71,6 +91,16 @@ class PChomePayClient
         return $this->post_request($this->postPaymentAuditURL, $data);
     }
 
+    // 查詢711訂單物流歷程頁面
+    public function get711HistoryPage($orderID)
+    {
+        if (!is_string($orderID) || stristr($orderID, "/")) {
+            throw new Exception('Order does not exist!', 20002);
+        }
+
+        return $this->get_request(str_replace("{order_id}", $orderID, $this->get711HistoryPageURL));
+    }
+
     // 取Token
     protected function getToken()
     {
@@ -82,7 +112,7 @@ class PChomePayClient
                 'Authorization' => 'Basic ' . base64_encode($userAuth),
             ),
         ));
-
+$this->log('token');
         $body = wp_remote_retrieve_body($r);
 
         return $this->handleResult($body);
@@ -124,6 +154,7 @@ class PChomePayClient
 
     protected function post_request($method, $postdata)
     {
+
         $token = $this->validateTokenExpiredIn();
 
         $r = wp_remote_post($method, array(
@@ -157,6 +188,10 @@ class PChomePayClient
 
     private function handleResult($result)
     {
+        if (empty($result)) {
+            return true;
+        }
+
         $jsonErrMap = [
             JSON_ERROR_NONE => 'No error has occurred',
             JSON_ERROR_DEPTH => 'The maximum stack depth has been exceeded',
@@ -183,11 +218,11 @@ class PChomePayClient
         }
 
         if (isset($obj->error_type)) {
-            $this->log("\n錯誤類型：" . $obj->error_type . "\n錯誤代碼：" . $obj->code . "\n錯誤訊息：" . ApiException::getErrMsg($obj->code));
+            $this->log("\n錯誤類型：" . $obj->error_type . "\n錯誤代碼：" . $obj->code . "\n錯誤訊息：" . ApiException::getErrMsg($obj->code) . "\n詳細內容：" . $obj->message);
             throw new Exception("交易失敗，請聯絡網站管理員。錯誤代碼：" . $obj->code, $obj->code);
         }
 
-        if (empty($obj->token) && empty($obj->order_id)) {
+        if (empty($obj->token) && empty($obj->order_id) && empty($obj->logistic_id)) {
 
             return false;
         }

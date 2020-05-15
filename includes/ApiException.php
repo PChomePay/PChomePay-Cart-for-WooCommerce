@@ -6,7 +6,7 @@
  * Time: 下午3:44
  */
 
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
 
 class ApiException
 {

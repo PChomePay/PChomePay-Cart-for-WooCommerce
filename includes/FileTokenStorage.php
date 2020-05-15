@@ -6,7 +6,7 @@
  * Time: 下午1:34
  */
 
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
 
 class FileTokenStorage
 {
