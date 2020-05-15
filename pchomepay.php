@@ -5,12 +5,12 @@
  * Plugin Name: PChomePay Gateway for WooCommerce
  * Plugin URI: https://www.pchomepay.com.tw
  * Description: 讓 WooCommerce 可以使用 PChomePay支付連 進行結帳！水啦！！
- * Version: 1.3.9
+ * Version: 1.6.1
  * Author: PChomePay支付連
  * Author URI: https://www.pchomepay.com.tw
  */
 
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
 
 add_action('plugins_loaded', 'pchomepay_gateway_init', 0);
 
@@ -22,12 +22,12 @@ function pchomepay_gateway_init()
     }
 
     require_once 'includes/PChomePayClient.php';
-
     require_once 'includes/PChomePayGateway.php';
 
     function add_pchomepay_gateway_class($methods)
     {
         $methods[] = 'WC_Gateway_PChomePay';
+        $methods[] = 'WC_PI_Gateway_PChomePay';
         return $methods;
     }
 
@@ -44,19 +44,16 @@ function pchomepay_gateway_init()
 
     function customize_order_received_text($text, $order)
     {
-        $message = WC_Gateway_PChomePay::$customize_order_received_text;
-        return $message;
+        return WC_Gateway_PChomePay::$customize_order_received_text;
     }
 
     add_filter('woocommerce_thankyou_order_received_text', 'customize_order_received_text', 10, 2);
-
 }
 
 add_action('init', 'pchomepay_plugin_updater_init');
 
 function pchomepay_plugin_updater_init()
 {
-
     include_once 'includes/updater.php';
 
     define('WP_GITHUB_FORCE_UPDATE', true);
@@ -78,12 +75,10 @@ function pchomepay_plugin_updater_init()
         );
 
         new WP_GitHub_Updater($config);
-
     }
-
 }
 
-//審單功能
+// 審單功能
 add_action('woocommerce_order_actions', 'pchomepay_audit_order_action');
 
 function pchomepay_audit_order_action($actions)
@@ -91,7 +86,7 @@ function pchomepay_audit_order_action($actions)
     global $theorder;
 
     // bail if the order has been paid for or this action has been run
-    if ($theorder->get_status() != 'awaiting') {
+    if ($theorder->get_status() != 'awaiting' || $theorder->payment_method != 'pchomepay') {
         return $actions;
     }
 
@@ -100,13 +95,12 @@ function pchomepay_audit_order_action($actions)
     return $actions;
 }
 
-//過單
+// 過單
 add_action('woocommerce_order_action_wc_order_pass', 'pchomepay_audit_order_pass');
 
 function pchomepay_audit_order_pass($order)
 {
     require_once 'includes/PChomePayClient.php';
-
     require_once 'includes/PChomePayGateway.php';
 
     $pchomepayGatway = new  WC_Gateway_PChomePay();
@@ -117,13 +111,12 @@ function pchomepay_audit_order_pass($order)
     }
 }
 
-//不過單
+// 不過單
 add_action('woocommerce_order_action_wc_order_deny', 'pchomepay_audit_order_deny');
 
 function pchomepay_audit_order_deny($order)
 {
     require_once 'includes/PChomePayClient.php';
-
     require_once 'includes/PChomePayGateway.php';
 
     $pchomepayGatway = new  WC_Gateway_PChomePay();
@@ -192,4 +185,90 @@ function add_awaiting_pchomepay_audit_order_statuses($order_statuses)
         }
     }
     return $new_order_statuses;
+}
+
+// 顧客訂單頁面 7-11物流歷程查詢
+add_filter( 'woocommerce_my_account_my_orders_actions', 'add_my_account_my_orders_custom_action', 10, 2 );
+function add_my_account_my_orders_custom_action( $actions, $order ) {
+    if ($order->get_meta('_pchomepay_paytype') == 'IPL7' && $order->payment_method == 'pchomepay') {
+
+        require_once 'includes/PChomePayClient.php';
+        require_once 'includes/PChomePayGateway.php';
+
+        $pchomepayGateway = new  WC_Gateway_PChomePay();
+        $url = $pchomepayGateway->process_query711_history_page($order->id);
+
+        $action_slug = 'pchomepay_ipl7';
+        $actions[$action_slug] = array(
+            'url'  => $url,
+            'name' => '物流歷程',
+        );
+    }
+    return $actions;
+}
+
+// Jquery script
+add_action( 'woocommerce_after_account_orders', 'action_after_account_orders_js');
+function action_after_account_orders_js() {
+    $action_slug = 'pchomepay_ipl7';
+    ?>
+    <script>
+        jQuery(function($){
+            $('a.<?php echo $action_slug; ?>').each( function(){
+                $(this).attr('target','_blank');
+            })
+        });
+    </script>
+    <?php
+}
+
+
+// The column content by row
+add_action( 'manage_shop_order_posts_custom_column' , 'add_custom_action_in_column_contents', 50, 2 );
+function add_custom_action_in_column_contents( $column, $post_id ) {
+
+    $order = wc_get_order( $post_id );
+
+    if (in_array($order->payment_method, ['pchomepay', 'pchomepay_pi'])) {
+        if ( $column == 'order_number' ){
+
+            if($customer_phone = $order->get_billing_phone()){
+                echo '<p><a href="tel:'.$customer_phone.'"><span class="dashicons dashicons-phone"></span> '.$customer_phone.'</a></strong></p>';
+            }
+
+            if($customer_email = $order->get_billing_email()){
+                echo '<p><a href="mailto:'.$customer_email.'"><span class="dashicons dashicons-email"></span> '.$customer_email.'</a></strong></p>';
+            }
+
+            if ($order->get_meta('_pchomepay_paytype') == 'IPL7') {
+
+                require_once 'includes/PChomePayClient.php';
+                require_once 'includes/PChomePayGateway.php';
+
+                $pchomepayGateway = new  WC_Gateway_PChomePay();
+                $url = $pchomepayGateway->process_query711_history_page($order->get_order_number());
+                $slug = 'pchomepay_ipl7';
+                // Output the button
+                echo '<p><a class="' . $slug . '" href="'.$url.'"><span class="dashicons dashicons-external ' . $slug .'"></span>查詢物流歷程</a></strong></p>';
+            }
+        }
+    }
+}
+
+// The CSS styling
+add_action( 'admin_head', 'add_custom_action_button_css' );
+function add_custom_action_button_css() {
+    $action_slug = 'pchomepay_ipl7';
+
+    ?>
+    <script>
+        jQuery(function($){
+            $('a.<?php echo $action_slug; ?>').each( function(){
+                $(this).attr('target','_blank');
+            })
+        });
+    </script>
+    <?php
+
+    echo '<style>.wc-action-button-'.$action_slug.'::after { font-family: woocommerce !important; content: "\e029" !important; }</style>';
 }
