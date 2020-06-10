@@ -17,15 +17,6 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
     public static $log = false;
     public static $customize_order_received_text;
 
-    public $id;
-    public $icon;
-    public $has_fields;
-    public $method_title;
-    public $method_description;
-    public $supports;
-    public $enabled;
-    public $title;
-    public $description;
     public $app_id;
     public $secret;
     public $sandbox_secret;
@@ -552,14 +543,15 @@ class WC_PI_Gateway_PChomePay extends WC_Gateway_PChomePay
     public function __construct()
     {
         parent::__construct();
+
         $this->id = 'pchomepay_pi';
+        $this->enabled = $this->get_option('enabled');
         $this->has_fields = false;
         $this->method_title = __('PChomePay PI-拍錢包', 'woocommerce');
         $this->method_description = '透過 PChomePay PI-拍錢包 付款，會連結到 PChomePay PI-拍錢包 付款頁面。';
 
-        // Define user set variables
-        $this->title = __('PChomePay PI-拍錢包', 'woocommerce');
-        $this->description = '透過 PChomePay PI-拍錢包 付款，會連結到 PChomePay PI-拍錢包 付款頁面。';
+        $this->init_form_fields();
+        $this->init_settings();
 
         if (empty($this->app_id) || empty($this->secret)) {
             $this->enabled = false;
