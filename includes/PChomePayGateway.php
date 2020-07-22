@@ -254,13 +254,17 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
                 $pay_type_note .= '<br>ATM虛擬帳號: ' . $order_data->payment_info->bank_code . ' - ' . $order_data->payment_info->virtual_account;
                 break;
             case 'CARD':
-                if ($order_data->payment_info->installment == 1) {
-                    $pay_type_note = '信用卡 付款 (一次付清)';
-                } else {
-                    $pay_type_note = '信用卡 分期付款 (' . $order_data->payment_info->installment . '期)';
-                }
+                if ($order_data->payment_info) {
+                    if ($order_data->payment_info->installment == 1) {
+                        $pay_type_note = '信用卡 付款 (一次付清)';
+                    } else {
+                        $pay_type_note = '信用卡 分期付款 (' . $order_data->payment_info->installment . '期)';
+                    }
 
-                if ($this->card_last_number) $pay_type_note .= '<br>末四碼: ' . $order_data->payment_info->card_last_number;
+                    if ($this->card_last_number) $pay_type_note .= '<br>末四碼: ' . $order_data->payment_info->card_last_number;
+                } else {
+                    $pay_type_note = '信用卡 付款';
+                }
 
                 break;
             case 'ACCT':
@@ -272,7 +276,7 @@ class WC_Gateway_PChomePay extends WC_Payment_Gateway
             case 'IPL7':
                 $pay_type_note = '7-11超商 付款';
                 break;
-            case 'IPPI':
+            case 'PI':
                 $pay_type_note = 'PI拍錢包 付款';
                 break;
             default:
